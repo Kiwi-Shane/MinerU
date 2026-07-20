@@ -945,7 +945,7 @@ async def run_orchestrated_cli(
     local_server: LocalAPIServer | None = None
     visualization_context: Optional[VisualizationContext] = None
     live_renderer: Optional[LiveTaskStatusRenderer] = None
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as http_client:
+    async with _api_client.build_async_http_client(timeout=timeout) as http_client:
         try:
             if api_url is None:
                 local_server = LocalAPIServer(extra_cli_args=extra_cli_args)

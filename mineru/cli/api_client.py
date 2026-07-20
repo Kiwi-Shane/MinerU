@@ -45,6 +45,7 @@ MINERU_LMDEPLOY_DEVICE_ENV = "MINERU_LMDEPLOY_DEVICE"
 LOCAL_API_LAUNCH_MODE_SUBPROCESS = "subprocess"
 LOCAL_API_LAUNCH_MODE_SPAWN = "spawn"
 MINERU_SPAWN_DEVICE_LIST = ["ascend"]
+HTTP_FOLLOW_REDIRECTS = False
 
 ManagedProcess = subprocess.Popen[bytes] | multiprocessing.process.BaseProcess
 
@@ -639,6 +640,26 @@ def build_http_timeout() -> httpx.Timeout:
     return httpx.Timeout(connect=10, read=60, write=300, pool=30)
 
 
+def build_sync_http_client(
+    *,
+    timeout: httpx.Timeout | None = None,
+) -> httpx.Client:
+    return httpx.Client(
+        timeout=build_http_timeout() if timeout is None else timeout,
+        follow_redirects=HTTP_FOLLOW_REDIRECTS,
+    )
+
+
+def build_async_http_client(
+    *,
+    timeout: httpx.Timeout | None = None,
+) -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        timeout=build_http_timeout() if timeout is None else timeout,
+        follow_redirects=HTTP_FOLLOW_REDIRECTS,
+    )
+
+
 def build_result_download_timeout() -> httpx.Timeout:
     return httpx.Timeout(
         connect=10,
@@ -868,7 +889,7 @@ def submit_parse_task_sync(
 ) -> SubmitResponse:
     task_url = f"{base_url}{TASKS_ENDPOINT}"
     try:
-        with httpx.Client(timeout=build_http_timeout(), follow_redirects=True) as sync_client:
+        with build_sync_http_client() as sync_client:
             with ExitStack() as stack:
                 files = []
                 for upload_asset in upload_assets:

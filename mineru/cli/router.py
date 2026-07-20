@@ -32,8 +32,9 @@ from mineru.cli.api_client import (
     TASK_RESULT_TIMEOUT_SECONDS,
     TASK_STATUS_POLL_INTERVAL_SECONDS,
     build_managed_process_popen_kwargs,
-    build_http_timeout,
+    build_async_http_client,
     build_result_download_timeout,
+    build_sync_http_client,
     find_free_port,
     normalize_base_url,
     stop_managed_process,
@@ -981,10 +982,7 @@ def warn_if_router_preload_ignored(settings: RouterSettings) -> None:
 
 
 async def startup_router_state(app: FastAPI, settings: RouterSettings) -> None:
-    http_client = httpx.AsyncClient(
-        timeout=build_http_timeout(),
-        follow_redirects=True,
-    )
+    http_client = build_async_http_client()
     worker_pool = WorkerPool(settings, http_client)
     registry = RouterTaskRegistry(
         task_retention_seconds=settings.task_retention_seconds,
@@ -1120,10 +1118,7 @@ def submit_payload_to_upstream_sync(
     base_url: str,
     payload: MultipartPayload,
 ) -> dict[str, Any]:
-    with ExitStack() as stack, httpx.Client(
-        timeout=build_http_timeout(),
-        follow_redirects=True,
-    ) as client:
+    with ExitStack() as stack, build_sync_http_client() as client:
         multipart = [
             (
                 field_name,

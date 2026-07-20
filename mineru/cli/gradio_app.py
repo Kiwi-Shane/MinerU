@@ -2,7 +2,6 @@
 
 import asyncio
 import html as html_lib
-import httpx
 import os
 import re
 import sys
@@ -939,10 +938,7 @@ async def ensure_local_api_ready_for_gradio_startup(
     if started_now:
         logger.info(f"Started local mineru-api at {local_server.base_url}")
 
-    async with httpx.AsyncClient(
-        timeout=_api_client.build_http_timeout(),
-        follow_redirects=True,
-    ) as http_client:
+    async with _api_client.build_async_http_client() as http_client:
         return await _api_client.wait_for_local_api_ready(
             http_client,
             local_server,
@@ -1062,10 +1058,7 @@ async def _run_to_markdown_job(
         )
     ]
 
-    async with httpx.AsyncClient(
-        timeout=_api_client.build_http_timeout(),
-        follow_redirects=True,
-    ) as http_client:
+    async with _api_client.build_async_http_client() as http_client:
         emit_status(STATUS_PREPARING_REQUEST)
         emit_status(STATUS_CHECKING_SERVER)
         server_health = await resolve_server_health(http_client, api_url)
