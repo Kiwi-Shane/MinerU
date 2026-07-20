@@ -12,6 +12,7 @@ from mineru.utils.models_download_utils import (
     download_and_modify_json,
     get_tools_config_file_path,
     resolve_model_source,
+    temporary_model_download_permission,
 )
 
 MODEL_SOURCE_ENV_VAR = 'MINERU_MODEL_SOURCE'
@@ -124,34 +125,35 @@ def download_models(model_source, model_type):
             default='auto'
         )
 
-    effective_model_source = get_effective_download_model_source(model_source)
+    with temporary_model_download_permission():
+        effective_model_source = get_effective_download_model_source(model_source)
 
-    # 如果未显式指定则交互式输入模型类型
-    if model_type is None:
-        model_type = click.prompt(
-            "Please select the model type to download: ",
-            type=click.Choice(['pipeline', 'vlm', 'all']),
-            default='all'
-        )
+        # 如果未显式指定则交互式输入模型类型
+        if model_type is None:
+            model_type = click.prompt(
+                "Please select the model type to download: ",
+                type=click.Choice(['pipeline', 'vlm', 'all']),
+                default='all'
+            )
 
-    logger.info(f"Downloading {model_type} model from {effective_model_source}...")
+        logger.info(f"Downloading {model_type} model from {effective_model_source}...")
 
-    try:
-        with temporary_model_source(effective_model_source):
-            if model_type == 'pipeline':
-                download_pipeline_models(effective_model_source)
-            elif model_type == 'vlm':
-                download_vlm_models(effective_model_source)
-            elif model_type == 'all':
-                download_pipeline_models(effective_model_source)
-                download_vlm_models(effective_model_source)
-            else:
-                click.echo(f"Unsupported model type: {model_type}", err=True)
-                sys.exit(1)
+        try:
+            with temporary_model_source(effective_model_source):
+                if model_type == 'pipeline':
+                    download_pipeline_models(effective_model_source)
+                elif model_type == 'vlm':
+                    download_vlm_models(effective_model_source)
+                elif model_type == 'all':
+                    download_pipeline_models(effective_model_source)
+                    download_vlm_models(effective_model_source)
+                else:
+                    click.echo(f"Unsupported model type: {model_type}", err=True)
+                    sys.exit(1)
 
-    except Exception as e:
-        logger.exception(f"An error occurred while downloading models: {str(e)}")
-        sys.exit(1)
+        except Exception as e:
+            logger.exception(f"An error occurred while downloading models: {str(e)}")
+            sys.exit(1)
 
 if __name__ == '__main__':
     download_models()

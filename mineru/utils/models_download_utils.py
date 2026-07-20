@@ -1,23 +1,60 @@
 # Copyright (c) Opendatalab. All rights reserved.
 import json
 import os
+from contextlib import contextmanager
 from functools import lru_cache
+from typing import Iterator
 
 from huggingface_hub import snapshot_download as hf_snapshot_download
 from loguru import logger
 from modelscope import snapshot_download as ms_snapshot_download
 import requests
 
+from mineru.data.io.http import DEFAULT_HTTP_TIMEOUT_SECONDS
 from mineru.utils.config_reader import get_configured_model_source, get_local_models_dir
 from mineru.utils.enum_class import ModelPath
 
 MODEL_SOURCE_ENV_VAR = 'MINERU_MODEL_SOURCE'
+MODEL_DOWNLOAD_ENABLED_ENV_VAR = 'MINERU_MODEL_DOWNLOAD_ENABLED'
+MINERU_OFFLINE_ENV_VAR = 'MINERU_OFFLINE'
 CONFIG_TEMPLATE_URL = 'https://gcore.jsdelivr.net/gh/opendatalab/MinerU@master/mineru.template.json'
 MINERU_CONFIG_VERSION = '1.3.2'
 HUGGINGFACE_MODELS_PAGE_URL = "https://huggingface.co/models"
 HUGGINGFACE_MODELS_PAGE_TIMEOUT = 3
 HUGGINGFACE_MODELS_PAGE_MAX_ATTEMPTS = 2
 REMOTE_MODEL_SOURCES = ("huggingface", "modelscope")
+DEFAULT_MODEL_HTTP_TIMEOUT_SECONDS = DEFAULT_HTTP_TIMEOUT_SECONDS
+
+
+def _env_flag_enabled(name: str) -> bool:
+    return os.getenv(name, '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def ensure_model_download_allowed() -> None:
+    """Fail closed unless a remote model/config download is explicitly enabled."""
+    if _env_flag_enabled(MINERU_OFFLINE_ENV_VAR):
+        raise RuntimeError(
+            "model downloads are disabled in offline mode; configure local models first"
+        )
+    if not _env_flag_enabled(MODEL_DOWNLOAD_ENABLED_ENV_VAR):
+        raise RuntimeError(
+            "model downloads are disabled by default; run mineru-models-download "
+            f"or set {MODEL_DOWNLOAD_ENABLED_ENV_VAR}=1 explicitly"
+        )
+
+
+@contextmanager
+def temporary_model_download_permission() -> Iterator[None]:
+    """Allow the explicit model-download command for its duration only."""
+    previous = os.environ.get(MODEL_DOWNLOAD_ENABLED_ENV_VAR)
+    os.environ[MODEL_DOWNLOAD_ENABLED_ENV_VAR] = '1'
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop(MODEL_DOWNLOAD_ENABLED_ENV_VAR, None)
+        else:
+            os.environ[MODEL_DOWNLOAD_ENABLED_ENV_VAR] = previous
 
 
 def get_tools_config_file_path() -> str:
@@ -30,7 +67,12 @@ def get_tools_config_file_path() -> str:
 
 def download_json(url):
     """下载 JSON 文件并返回解析后的内容。"""
-    response = requests.get(url)
+    ensure_model_download_allowed()
+    response = requests.get(
+        url,
+        timeout=DEFAULT_MODEL_HTTP_TIMEOUT_SECONDS,
+        allow_redirects=False,
+    )
     response.raise_for_status()
     return response.json()
 
@@ -187,7 +229,7 @@ def persist_downloaded_model_config(model_source: str, repo_mode: str, model_roo
 
 
 @lru_cache(maxsize=1)
-def resolve_auto_model_source() -> str:
+def _resolve_auto_model_source_cached() -> str:
     """通过 Hugging Face 模型列表页探测 auto 应该使用的实际模型来源。"""
     last_error = None
     for _ in range(HUGGINGFACE_MODELS_PAGE_MAX_ATTEMPTS):
@@ -195,6 +237,7 @@ def resolve_auto_model_source() -> str:
             response = requests.get(
                 HUGGINGFACE_MODELS_PAGE_URL,
                 timeout=HUGGINGFACE_MODELS_PAGE_TIMEOUT,
+                allow_redirects=False,
             )
             if 200 <= response.status_code < 400:
                 return "huggingface"
@@ -206,6 +249,12 @@ def resolve_auto_model_source() -> str:
         f"Failed to access {HUGGINGFACE_MODELS_PAGE_URL}: {last_error}, fallback to modelscope."
     )
     return "modelscope"
+
+
+def resolve_auto_model_source() -> str:
+    """通过 Hugging Face 模型列表页探测 auto 应该使用的实际模型来源。"""
+    ensure_model_download_allowed()
+    return _resolve_auto_model_source_cached()
 
 
 def resolve_model_source(model_source: str | None = None, allow_auto: bool = False) -> str:
@@ -251,7 +300,12 @@ def resolve_model_source(model_source: str | None = None, allow_auto: bool = Fal
 
 
 @lru_cache(maxsize=None)
-def _snapshot_download_cached(model_source: str, repo_mode: str, repo: str, relative_path: str) -> str:
+def _snapshot_download_cached_impl(
+    model_source: str,
+    repo_mode: str,
+    repo: str,
+    relative_path: str,
+) -> str:
     """按进程缓存远端 snapshot_download 结果，减少重复缓存检查和 Fetching 日志。"""
     if model_source == "huggingface":
         snapshot_download = hf_snapshot_download
@@ -276,6 +330,16 @@ def _snapshot_download_cached(model_source: str, repo_mode: str, repo: str, rela
     return cache_dir
 
 
+def _snapshot_download_cached(
+    model_source: str,
+    repo_mode: str,
+    repo: str,
+    relative_path: str,
+) -> str:
+    ensure_model_download_allowed()
+    return _snapshot_download_cached_impl(model_source, repo_mode, repo, relative_path)
+
+
 def auto_download_and_get_model_root_path(relative_path: str, repo_mode='pipeline') -> str:
     """
     支持文件或目录的可靠下载。
@@ -285,6 +349,11 @@ def auto_download_and_get_model_root_path(relative_path: str, repo_mode='pipelin
     :param relative_path: 文件或目录相对路径
     :return: 本地文件绝对路径或相对路径
     """
+    relative_path = normalize_download_relative_path(relative_path, repo_mode)
+    configured_model_root = get_existing_configured_model_root(repo_mode, relative_path)
+    if configured_model_root is not None:
+        return configured_model_root
+
     model_source = resolve_model_source()
 
     if model_source == 'local':
@@ -312,11 +381,7 @@ def auto_download_and_get_model_root_path(relative_path: str, repo_mode='pipelin
     # model_source 已解析为实际远端来源后，再选择对应仓库。
     repo = repo_mapping[repo_mode][model_source]
 
-    relative_path = normalize_download_relative_path(relative_path, repo_mode)
-    configured_model_root = get_existing_configured_model_root(repo_mode, relative_path)
-    if configured_model_root is not None:
-        return configured_model_root
-
+    ensure_model_download_allowed()
     cache_dir = _snapshot_download_cached(model_source, repo_mode, repo, relative_path)
 
     if not cache_dir:

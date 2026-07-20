@@ -288,7 +288,13 @@ def test_export_requires_no_api_key_and_sets_offline_environment(
         _languages: list[str],
         **_kwargs: Any,
     ) -> None:
-        for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "MODELSCOPE_OFFLINE"):
+        for name in (
+            "HF_HUB_OFFLINE",
+            "TRANSFORMERS_OFFLINE",
+            "MODELSCOPE_OFFLINE",
+            "MINERU_OFFLINE",
+            "MINERU_MODEL_DOWNLOAD_ENABLED",
+        ):
             seen_environment[name] = runner.os.environ.get(name)
         _write_parser_outputs(
             Path(output_dir), stem=pdf_file_names[0], parse_dir_name="auto"
@@ -302,6 +308,8 @@ def test_export_requires_no_api_key_and_sets_offline_environment(
         "HF_HUB_OFFLINE": "1",
         "TRANSFORMERS_OFFLINE": "1",
         "MODELSCOPE_OFFLINE": "1",
+        "MINERU_OFFLINE": "1",
+        "MINERU_MODEL_DOWNLOAD_ENABLED": "0",
     }
 
 

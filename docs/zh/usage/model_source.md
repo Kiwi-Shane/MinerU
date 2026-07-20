@@ -2,7 +2,7 @@
 
 MinerU使用 `HuggingFace` 和 `ModelScope` 作为模型仓库，用户可以根据需要切换模型源或使用本地模型。
 
-- `auto` 是默认的模型源策略，会优先探测 HuggingFace 是否可访问；可访问时使用 `HuggingFace`，不可访问时自动回退到 `ModelScope`。
+- `auto` 是远程模型源策略；只有显式启用模型下载时才会探测 HuggingFace 并回退到 `ModelScope`。普通解析默认不会探测网络或下载缺失模型。
 - `HuggingFace` 在全球范围内提供了优异的加载速度和极高稳定性。
 - `ModelScope` 是中国大陆地区用户的最佳选择，提供了无缝兼容的SDK模块，适用于无法访问`HuggingFace`的用户。
 
@@ -21,6 +21,10 @@ os.environ["MINERU_MODEL_SOURCE"] = "modelscope"
 ```
 >[!TIP]
 > MinerU 已不再提供用于切换模型源的命令行参数。通过环境变量设置的模型源会在当前终端会话中生效，直到终端关闭或环境变量被修改。
+
+远程模型/配置下载默认关闭。仅在明确授权的下载操作中设置
+`MINERU_MODEL_DOWNLOAD_ENABLED=1`；设置 `MINERU_OFFLINE=1` 后，即使存在下载
+权限也会 fail closed。已经配置且存在的本地模型路径不需要下载权限即可使用。
 
 ### 通过配置文件切换
 如果未设置 `MINERU_MODEL_SOURCE`，MinerU 会读取用户目录下 `mineru.json` 中的 `model-source` 字段。`model-source` 支持固定值 `huggingface`、`modelscope`，也支持模板中的首次解析占位值 `auto`。当值为 `auto` 或字段缺失时，会先自动探测实际来源；首次自动探测完成后，会将 `model-source` 写回为 `huggingface` 或 `modelscope`，避免后续启动时因网络波动反复切换来源。
@@ -47,7 +51,7 @@ mineru-models-download
 >- 模型下载到本地后，您可以自由移动模型文件夹到其他位置，同时需要在 `mineru.json` 中更新模型路径。
 >- 如您将模型文件夹部署到其他服务器上，请确保将 `mineru.json`文件一同移动到新设备的用户目录中并正确配置模型路径。
 >- 如您需要更新模型文件，可以再次运行 `mineru-models-download` 命令，模型更新暂不支持自定义路径，如您没有移动本地模型文件夹，模型文件会增量更新；如您移动了模型文件夹，模型文件会重新下载到默认位置并更新`mineru.json`。
->- `mineru-models-download` 必须使用远端模型源执行真实下载；如果当前终端已设置 `MINERU_MODEL_SOURCE=local`，该命令会仅在本次执行中临时忽略该值，并改用您选择的 `auto`、`huggingface` 或 `modelscope` 下载模型。
+>- `mineru-models-download` 是显式下载命令，仅在该命令执行期间临时授予下载权限，不能覆盖 `MINERU_OFFLINE=1`。如果当前终端已设置 `MINERU_MODEL_SOURCE=local`，该命令会仅在本次执行中临时忽略该值，并改用您选择的 `auto`、`huggingface` 或 `modelscope` 下载模型。
 
 ### 2. 使用本地模型进行解析
 

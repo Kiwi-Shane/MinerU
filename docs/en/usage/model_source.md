@@ -2,7 +2,7 @@
 
 MinerU uses `HuggingFace` and `ModelScope` as model repositories. Users can switch model sources or use local models as needed.
 
-- `auto` is the default model source policy. It first checks whether Hugging Face is accessible. If accessible, MinerU uses `HuggingFace`, otherwise it automatically falls back to `ModelScope`.
+- `auto` is the remote model source policy. It probes Hugging Face and falls back to `ModelScope` only when model downloads are explicitly enabled; ordinary parsing does not probe or download missing models by default.
 - `HuggingFace` provides excellent loading speed and high stability globally.
 - `ModelScope` is the best choice for users in mainland China, providing seamlessly compatible `hf` SDK modules, suitable for users who cannot access HuggingFace.
 
@@ -21,6 +21,12 @@ os.environ["MINERU_MODEL_SOURCE"] = "modelscope"
 ```
 >[!TIP]
 > MinerU no longer provides a CLI flag for model source selection. Model sources set through environment variables take effect in the current terminal session until the terminal is closed or the environment variable is modified.
+
+Remote model/config downloads are disabled by default. Set
+`MINERU_MODEL_DOWNLOAD_ENABLED=1` only for an explicitly authorized download
+operation. Set `MINERU_OFFLINE=1` to fail closed even when download permission
+is present. A configured, existing local model path remains usable without
+download permission.
 
 ### Configure via Configuration File
 If `MINERU_MODEL_SOURCE` is not set, MinerU reads the `model-source` field from `mineru.json` in the user directory. `model-source` supports fixed values `huggingface` and `modelscope`, and also supports the template's first-run placeholder value `auto`. When the value is `auto` or the field is missing, MinerU probes the actual source first. After the first auto probe resolves an actual source, MinerU writes `model-source` back as `huggingface` or `modelscope` to avoid switching sources on later startups due to network fluctuations.
@@ -46,7 +52,7 @@ mineru-models-download
 >- After downloading models locally, you can freely move the model folder to other locations while updating the model path in `mineru.json`.
 >- If you deploy the model folder to another server, please ensure you move the `mineru.json` file to the user directory of the new device and configure the model path correctly.
 >- If you need to update model files, you can run the `mineru-models-download` command again. Model updates do not support custom paths currently - if you haven't moved the local model folder, model files will be incrementally updated; if you have moved the model folder, model files will be re-downloaded to the default location and `mineru.json` will be updated.
->- `mineru-models-download` must use a remote model source to perform a real download. If your current shell already sets `MINERU_MODEL_SOURCE=local`, this command will temporarily ignore that value for this invocation and use your selected `auto`, `huggingface`, or `modelscope` source instead.
+>- `mineru-models-download` is the explicit download command; it grants download permission only for the duration of that command. It cannot override `MINERU_OFFLINE=1`. If your current shell already sets `MINERU_MODEL_SOURCE=local`, this command will temporarily ignore that value for this invocation and use your selected `auto`, `huggingface`, or `modelscope` source instead.
 
 ### 2. Use Local Models for Parsing
 
