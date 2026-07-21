@@ -840,3 +840,30 @@ independent native-source adjudication, human semantic gold, profile-wide
 qualification, host-level egress denial, source sufficiency, or private-data
 evidence. The profile dispositions remain `deferred`, and no schema,
 runtime, provider, or upstream state changed.
+
+## Adapter model-identifier exposure recheck (2026-07-21)
+
+At source revision
+`eb570f7e9383b6a9f7f636e47a371baca1d9313e`, the Knowhere adapter now derives
+portable model identifiers when the canonical-manifest caller does not supply
+them. The derivation is local-only: it uses the existing MinerU model catalog,
+the declared model-source policy, and a configured snapshot path when present;
+it does not probe a remote endpoint, download a model, or emit an absolute
+host path.
+
+The recheck used one public one-page PDF and the private 37-page PDF from the
+local pilot. Both canonical manifests completed with zero warnings and zero
+errors, matched the input SHA-256, exposed the pipeline component identifiers
+for layout, OCR, formula, table recognition, and table classification, and
+reported snapshot `ed6b654c018d742e65a17671e379c5e6ecc87ec9` with
+`snapshot_id_status: resolved`. The private run also produced 37 native/logical
+pages. The public source recheck ran the focused adapter contract selection
+with `19 passed` and Ruff passed.
+
+This closes the prior adapter-exposure gap for the observed local pipeline
+configuration. It does not establish that every possible model source or VLM
+configuration will have an exact snapshot binding, and it does not close
+model-specific license/notice provenance, native or semantic gold, host-level
+egress denial, source sufficiency, provider approval, or profile qualification.
+The profile dispositions remain `deferred`; no schema, upstream, or provider
+state changed.
