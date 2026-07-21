@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterator, Mapping
 
 from mineru.integrations.knowhere.contract import (
@@ -20,6 +20,18 @@ from mineru.integrations.knowhere.contract import (
 
 _IMAGE_REFERENCE_KEYS = {"path", "img_path", "image_path"}
 _TABLE_TYPES = {"table", "simple_table", "complex_table"}
+
+
+def _is_safe_relative_directory_sentinel(reference: str) -> bool:
+    """Identify a parser directory marker without weakening path checks."""
+    normalized = reference.replace("\\", "/")
+    portable = PurePosixPath(normalized)
+    return (
+        normalized.endswith("/")
+        and not portable.is_absolute()
+        and not PureWindowsPath(reference).is_absolute()
+        and ".." not in portable.parts
+    )
 
 
 def validate_canonical_manifest_options(
@@ -160,7 +172,8 @@ def _iter_string_references(
         for child_value in value:
             yield from _iter_string_references(child_value, key=key)
     elif key in _IMAGE_REFERENCE_KEYS and isinstance(value, str) and value.strip():
-        yield value
+        if not _is_safe_relative_directory_sentinel(value):
+            yield value
 
 
 def _resolve_image_reference(

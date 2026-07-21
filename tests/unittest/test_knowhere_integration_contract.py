@@ -30,6 +30,22 @@ def test_pipeline_extra_declares_legacy_ocr_runtime_dependency() -> None:
     )
 
 
+def test_canonical_image_reference_ignores_directory_sentinel() -> None:
+    from mineru.integrations.knowhere.canonical import _iter_string_references
+
+    assert list(
+        _iter_string_references({"image_source": {"path": "images/"}})
+    ) == []
+    assert list(
+        _iter_string_references(
+            {"image_source": {"path": "images/figure.png"}}
+        )
+    ) == ["images/figure.png"]
+    assert list(
+        _iter_string_references({"image_source": {"path": "../images/"}})
+    ) == ["../images/"]
+
+
 def _write_parser_outputs(
     output_root: Path,
     *,
