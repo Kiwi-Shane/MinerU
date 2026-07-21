@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -26,6 +27,7 @@ from mineru.integrations.knowhere.contract import (
     resolve_artifact_path,
     sha256_file,
 )
+from mineru.integrations.knowhere.model_identity import build_model_identifiers
 from mineru.version import __version__
 
 
@@ -290,13 +292,22 @@ def run_knowhere_export(options: KnowhereExportOptions) -> Path:
         "warnings": [],
     }
     if options.canonical_manifest is not None:
+        canonical_options = options.canonical_manifest
+        if not canonical_options.model_identifiers:
+            canonical_options = replace(
+                canonical_options,
+                model_identifiers=build_model_identifiers(
+                    options,
+                    effective_backend=effective_backend,
+                ),
+            )
         canonical_manifest = build_document_extraction_manifest(
             legacy_manifest=manifest,
             content_list_v2=content_list_v2,
             output_root=output_root,
             parse_dir=parse_dir,
             options=options,
-            canonical_options=options.canonical_manifest,
+            canonical_options=canonical_options,
             repository_sha=producer_revision,
             package_version=__version__,
             effective_backend=effective_backend,

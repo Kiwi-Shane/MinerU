@@ -46,6 +46,87 @@ def test_canonical_image_reference_ignores_directory_sentinel() -> None:
     ) == ["../images/"]
 
 
+def test_model_identifiers_use_declared_local_catalog_without_absolute_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from mineru.integrations.knowhere.model_identity import build_model_identifiers
+
+    snapshot_id = "a" * 40
+    model_root = tmp_path / "models" / "snapshots" / snapshot_id
+    model_root.mkdir(parents=True)
+    config_path = tmp_path / "mineru.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "model-source": "local",
+                "models-dir": {"pipeline": str(model_root)},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MINERU_TOOLS_CONFIG_JSON", str(config_path))
+    monkeypatch.delenv("MINERU_MODEL_SOURCE", raising=False)
+    monkeypatch.setenv("MINERU_FORMULA_CH_SUPPORT", "False")
+
+    identifiers = build_model_identifiers(
+        _options(tmp_path / "report.pdf", tmp_path / "output"),
+        effective_backend="pipeline",
+    )
+
+    assert identifiers["model_source"] == "local"
+    assert identifiers["repository_aliases"] == {
+        "huggingface": "opendatalab/PDF-Extract-Kit-1.0",
+        "modelscope": "OpenDataLab/PDF-Extract-Kit-1.0",
+    }
+    assert identifiers["snapshot_id"] == snapshot_id
+    assert identifiers["snapshot_id_status"] == "resolved"
+    assert identifiers["components"] == {
+        "layout": "models/Layout/PP-DocLayoutV2",
+        "ocr": "models/OCR/paddleocr_torch",
+        "formula": "models/MFR/unimernet_hf_small_2503",
+        "table_recognition": {
+            "wired": "models/TabRec/UnetStructure/unet.onnx",
+            "wireless": "models/TabRec/SlanetPlus/slanet-plus.onnx",
+        },
+        "table_classification": (
+            "models/TabCls/paddle_table_cls/PP-LCNet_x1_0_table_cls.onnx"
+        ),
+    }
+    assert str(tmp_path) not in json.dumps(identifiers)
+
+
+def test_canonical_export_populates_model_identifiers_when_caller_omits_them(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "report.pdf"
+    source.write_bytes(b"%PDF-1.7 synthetic")
+    output_root = tmp_path / "output"
+    _install_rich_fake_parser(monkeypatch)
+    monkeypatch.setenv("MINERU_MODEL_SOURCE", "local")
+    monkeypatch.delenv("MINERU_TOOLS_CONFIG_JSON", raising=False)
+
+    canonical_path = run_knowhere_export(
+        _options(
+            source,
+            output_root,
+            canonical_manifest=CanonicalManifestOptions(
+                source_id="SRC-SYNTHETIC-002",
+                source_version_id="SRC-SYNTHETIC-002-V001",
+                extraction_run_id="EXT-SYNTHETIC-002",
+                accelerator_profile="cpu",
+            ),
+        )
+    )
+
+    manifest = json.loads(canonical_path.read_text(encoding="utf-8"))
+    identifiers = manifest["mineru_identity"]["model_identifiers"]
+    assert identifiers["model_source"] == "local"
+    assert identifiers["components"]["layout"] == "models/Layout/PP-DocLayoutV2"
+    assert "model_identifiers_not_exposed_by_adapter" not in manifest["warnings"]
+
+
 def _write_parser_outputs(
     output_root: Path,
     *,
