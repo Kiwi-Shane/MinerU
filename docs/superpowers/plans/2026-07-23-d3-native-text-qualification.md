@@ -41,6 +41,7 @@ RA schema duplication. Keep parser outputs outside Git.
 - [x] Update `docs/qualification/document-extraction-manifest-v1.md` with the
       D3 bounded result and explicit remaining profile limitations.
 - [x] Run diff/private-artifact checks and inspect the final worktree.
-- [x] Commit and push the MinerU feature branch; final pushed head is
-      `9301f637d01317351322f3fac9b7c3155e5b6ced`.
+- [x] Commit and push the MinerU feature branch; qualification ran at
+      `9301f637d01317351322f3fac9b7c3155e5b6ced` and final pushed head is
+      `83f488cab03bd20bf900f5abb1ca6589551c5e46`.
       status to the RA handoff.
