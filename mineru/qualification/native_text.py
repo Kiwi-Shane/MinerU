@@ -280,6 +280,9 @@ def build_native_text_manifest(
         "content_list_v2",
         root=output_root,
     )
+    content_list_v2_relative = _safe_relative_path(
+        content_list_v2_path, root=output_root
+    )
     middle_json_path = _artifact_path(
         {"outputs": _manifest_artifacts(output_root, manifest_path)},
         "middle_json",
@@ -305,6 +308,7 @@ def build_native_text_manifest(
                     "block_id": block_id,
                     "page_number": page_index + 1,
                     "block_type": str(block.get("type", "unknown")),
+                    "artifact_path": content_list_v2_relative,
                     "locator": locator,
                 }
             )
@@ -314,6 +318,7 @@ def build_native_text_manifest(
                         "table_index": table_index,
                         "block_id": block_id,
                         "page_number": page_index + 1,
+                        "artifact_path": content_list_v2_relative,
                         "locator": locator,
                         "cells": _table_cells(block),
                     }

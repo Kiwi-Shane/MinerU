@@ -124,6 +124,25 @@ def test_native_text_manifest_and_gold_evaluation_pass(tmp_path: Path) -> None:
     assert result["checks"]["unmanifested_outputs"]["paths"] == []
 
 
+def test_page_blocks_bind_locator_to_manifested_artifact(tmp_path: Path) -> None:
+    output_root, _source_path, _gold_path = _write_fake_parse(tmp_path)
+    manifest = json.loads(
+        (output_root / "document-extraction-manifest-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    output_paths = {item["relative_path"] for item in manifest["outputs"]}
+
+    assert manifest["page_blocks"]
+    assert all(
+        block["artifact_path"] in output_paths for block in manifest["page_blocks"]
+    )
+    assert all(
+        block["artifact_path"].endswith("_content_list_v2.json")
+        for block in manifest["page_blocks"]
+    )
+
+
 def test_native_text_evaluator_rejects_stale_source_hash(tmp_path: Path) -> None:
     output_root, source_path, gold_path = _write_fake_parse(tmp_path)
     source_path.write_bytes(b"changed source")
