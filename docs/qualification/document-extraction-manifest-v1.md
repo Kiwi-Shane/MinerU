@@ -19,8 +19,9 @@ authorize automatic use of the derivative as native source evidence.
 
 ## D3 operator run
 
-The final run was performed on 2026-07-23 from MinerU source revision
-`72fcb4a5d688b2d23acd619f3de2f2bd85c44775`, using the local model snapshot
+The final run was performed on 2026-07-23 from MinerU qualification branch
+head `9301f637d01317351322f3fac9b7c3155e5b6ced`, based on the live default
+head `72fcb4a5d688b2d23acd619f3de2f2bd85c44775`, using the local model snapshot
 `ed6b654c018d742e65a17671e379c5e6ecc87ec9` in image
 `sha256:e034f798206a8cdd384a6c3986693cbfe385fe2ed585952963eaeac84ec836c4`.
 The source checkout was mounted read-only into the existing local-model
@@ -31,12 +32,12 @@ The run used two input cases:
 
 | Case | Input SHA-256 | Manifest SHA-256 | Pages | Artifacts | Blocks | Tables |
 |---|---|---|---:|---:|---:|---:|
-| Public repository `tests/unittest/pdfs/test.pdf` | `ae9e3f14cc3bea88dd0ce4e2715b3b03561378501318df61f0889df207aed25b` | `c430418debb505d8bd2b9a2dd0600f3226c56275ed2e8a250e0564e1b1da831a` | 1 | 9 | 5 | 1 |
-| Generated non-private native-text fixture | `e6adc545f15d6e84994df043a1fd5ecda0709cb05d2630bcef5107d6e1be6ae1` | `30a911826eb9fd8914b79e926a0d83c99271d018df95711d8b71a35bccc7000c` | 1 | 7 | 6 | 1 |
+| Public repository `tests/unittest/pdfs/test.pdf` | `ae9e3f14cc3bea88dd0ce4e2715b3b03561378501318df61f0889df207aed25b` | `0467b09c7837be50892d5e5ceaece35bd4ce8baf1bf84060906e3b55bd51eff8` | 1 | 9 | 5 | 1 |
+| Generated non-private native-text fixture | `6efdd3b1f74dc5d9719fd80610f89334b31646708dbf8e5ff429bb55e5aac2da` | `3084c69a7419fa083ebda40edd4c4a77a28d84c181cac760709706fb621ddbf6` | 1 | 7 | 6 | 1 |
 
 Generated PDFs and parser output were retained only in local engineering
 evidence at
-`E:\Codex\30-evidence\ra-recovery-program-v1-0\d3-native-text-20260723-r2`.
+`E:\Codex\30-evidence\ra-recovery-program-v1-0\d3-native-text-20260723-r3`.
 The sanitized aggregate report is `report.json`; source contents and parser
 derivatives are not committed.
 
